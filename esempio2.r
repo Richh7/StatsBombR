@@ -1,106 +1,122 @@
-library(StatsBombR)
 library(ggtern)
+library(StatsBombR)
 
+
+#Filtering season by competition (Spain - La Liga) and season_id (2020/21)
 Comp <- FreeCompetitions() %>%
-  filter(competition_id==11 & season_id==90)
+  filter(competition_id == 11 & season_id == 90)
 
 Matches <- FreeMatches(Comp)
 
-Events <- free_allevents(MatchesDF = Matches, Parallel = T)
-  
-Events <- allclean(Events) %>%
+
+#Computing separately shots, passes and dribblings data
+Events <- free_allevents(MatchesDF = Matches, Parallel = T) %>%
+  allclean() %>%
   filter(player.name != "NA") %>%
   group_by(player.name, team.name)
 
 Shots <- Events %>%
   filter(shot.type.id != "NA") %>%
   count(player.name)
-colnames(Shots)[3] ="n.shots"
+colnames(Shots)[3] = "n.shots"
 
 Passes <- Events %>%
   filter(pass.type.id != "NA") %>%
   count(player.name)
-colnames(Passes)[3] ="n.passes"
+colnames(Passes)[3] = "n.passes"
 
 Dribblings <- Events %>%
   filter(dribble.outcome.id != "NA") %>%
   count(player.name)
-colnames(Dribblings)[3] ="n.dribblings"
+colnames(Dribblings)[3] = "n.dribblings"
 
 Results <- data.frame(unique(Events$player.name))
-colnames(Results)[1] ="player.name"
+colnames(Results)[1] = "player.name"
 
+#Merging Shots, Dribblings and Passes in Results, keeping players who played in the same team the whole year
 Results <- Results %>%
-  left_join(Shots, by="player.name") %>%
-  left_join(Passes, by="player.name") %>%
-  left_join(Dribblings, by="player.name") %>%
-  filter(n.shots != "NA" & n.dribblings != "NA" & n.passes != "NA")
+  left_join(Shots, by = "player.name") %>%
+  left_join(Passes, by = "player.name") %>%
+  left_join(Dribblings, by = "player.name") %>%
+  na.omit() %>%
+  filter(team.name.x == team.name.y & team.name.y == team.name & team.name == team.name.x) %>%
+  select(-team.name.y, -team.name)
 
+#Computing percentages of shots, dribblings and passes and then we merge them again in Results 
 Percent <- data.frame()
 for (i in 1:nrow(Results)) {
-  Tmp <- Results[i, 3] + Results[i, 5] + Results[i, 7]
+  Tmp <- Results[i, 3] + Results[i, 4] + Results[i, 5]
   PercS <- (Results[i, 3] / Tmp) * 100
-  PercP <- (Results[i, 5] / Tmp) * 100
-  PercD <- (Results[i, 7] / Tmp) * 100
+  PercP <- (Results[i, 4] / Tmp) * 100
+  PercD <- (Results[i, 5] / Tmp) * 100
   SumPerc <- PercS + PercP + PercD
   Values <- c(Tmp, PercS, PercP, PercD, SumPerc)
   Percent <- rbind(Percent, Values)
 }
 
-colnames(Percent)[1] ="tot.sum"
-colnames(Percent)[2] ="p.shots"
-colnames(Percent)[3] ="p.passes"
-colnames(Percent)[4] ="p.dribblings"
-colnames(Percent)[5] ="tot.p.sum"
-
 Results <- cbind(Results, Percent)
 
+colnames(Results) <- c("player.name", "team.name", "n.shots", "n.passes", "n.dribblings", 
+                      "tot.sum", "p.shots", "p.passes", "p.dribblings", "tot.p.sum")
+
+head(Results)
+
+
+#We are ready to plot results
 ggtern(data = Results, aes(x = p.passes, y = p.dribblings, z = p.shots)) + 
   geom_point(size = 2, 
              shape = 21, 
              color = "black",
-             fill="black")
+             fill = "black")
 
+
+#Let's highlight the point which represents the so called player "Lionel Messi"
 playerHightlight <- Results %>%
-  filter(player.name == "Lionel Messi")
+  filter(player.name == "Lionel Andrés Messi Cuccittini")
 
 ggtern() + 
   geom_point(data = Results, aes(x = p.passes, y = p.dribblings, z = p.shots),
              size = 2, 
              shape = 21, 
              color = "grey",
-             fill= "grey") +
-  geom_point(data = playerHightlight, aes(x = perc.passes, y = perc.dribblings, z = perc.shots), 
+             fill = "grey") +
+  geom_point(data = playerHightlight, aes(x = p.passes, y = p.dribblings, z = p.shots), 
              size = 2, 
              shape = 21, 
              color = "black",
-             fill= "red")
+             fill = "red")
 
-#aggiungere colonna squadra
-ClubSelect <- Results %>%
-  filter(player.name == "Barcelona")
+
+#"Let's highlight all the players of Barcelona football club
+ClubHightlight <- Results %>%
+  filter(team.name == "Barcelona")
 
 ggtern() + 
-  geom_point(data = Results, aes(x = perc.passes, y = perc.dribblings, z = perc.shots),
+  geom_point(data = Results, aes(x = p.passes, y = p.dribblings, z = p.shots),
              size = 2, 
              shape = 21, 
              color = "grey",
-             fill= "grey") + 
-  geom_point(data = ClubHightlight, aes(x = perc.passes, y = perc.dribblings, z = perc.shots), 
+             fill = "grey") + 
+  geom_point(data = ClubHightlight, aes(x = p.passes, y = p.dribblings, z = p.shots), 
              size = 2, 
              shape = 21, 
              color = "black",
-             fill= "red")
+             fill = "red")
 
-ResultsKmean <- Results[6:8]
 
-# use the kmeans() function to perform the analysis, we chose to devide the data into 6 'clusters' 
-kmeans <- kmeans(ResultsKmean, 3)
+#We now apply the k-means procedure, in order to group the points in clusters and then we plot the result
+kmeans <- kmeans(Results[7:9], 5)
 
-# We want to bind the kMeans Clusters to the original dataframe 
-Results$Cluster <- as.character(kmeans$cluster)
+Results$cluster <- as.character(kmeans$cluster)
 
-ggtern(data = Results, aes(x = perc.passes, y = perc.dribblings, z = perc.shots)) + 
-  geom_point(aes(fill = Cluster), size = 2, 
+ggtern(data = Results, aes(x = p.passes, y = p.dribblings, z = p.shots)) + 
+  geom_point(aes(fill = cluster), size = 2, 
              shape = 21, 
              color = "black")
+
+ReplacePlayer <- Results %>%
+  filter(cluster == "5") %>%
+  arrange(-p.passes) %>%
+  slice(1:5)
+
+view(ReplacePlayer)
