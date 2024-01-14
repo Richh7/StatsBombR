@@ -1,0 +1,68 @@
+\documentclass[12pt]{article}
+
+\usepackage[english]{babel}
+\usepackage[letterpaper,top=3.5cm,bottom=3.5cm,left=3cm,right=3cm]{geometry}
+\usepackage{import}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[svgnames]{xcolor}
+\usepackage[colorlinks=true, allcolors=blue]{hyperref}
+\usepackage[backend=biber, style=chem-angew]{biblatex}
+\usepackage{listings}
+
+\graphicspath{{./immagini/}}
+
+\lstset{
+    language=R,
+    showstringspaces=false,
+    columns=flexible,
+    basicstyle={\scriptsize\ttfamily},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    stringstyle=\color{Red},
+    commentstyle=\color{DarkGreen},
+    breaklines=true,
+    breakatwhitespace=true
+  }
+
+
+\addbibresource{bibliography.bib}
+
+\title{
+    Tesina sul pacchetto StatsBombR \\ 
+    \vspace{5pt} \large{football analytics in R} \\ 
+    \vspace{20pt} \normalsize{Corso di Statistica Applicata e Analisi dei Dati a.a. 2022/23} \\ 
+    \vspace{10pt} \textit{Zamolo Riccardo, Mat. 135047}
+}
+
+\begin{document}
+    \date{}
+    \maketitle
+    
+    \newpage
+    
+    \listoffigures
+    \tableofcontents
+
+    \newpage
+
+    \import{./}{parte1.tex}
+
+    \newpage
+
+    \import{./}{parte2.tex}
+
+    \newpage
+    
+    \appendix
+    \section{Codice esempi}
+    \lstinputlisting{./codice/esempio1.r}
+    \vspace{30pt}
+    \lstinputlisting{./codice/esempio2.r}
+    \vspace{30pt}
+    \lstinputlisting{./codice/esempio3.r}
+    \newpage
+    
+    \printbibliography
+\end{document}
